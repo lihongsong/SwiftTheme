@@ -11,21 +11,6 @@ import Foundation
 @objc extension ThemeManager {
     
     /**
-        extension for Objective-C, Use setTheme(plistName: String, path: ThemePath) in Swift
-     */
-    public class func setThemeWithPlistInMainBundle(_ plistName: String) {
-        setTheme(plistName: plistName, path: .mainBundle)
-    }
-    
-    /**
-        extension for Objective-C, Use setTheme(plistName: String, path: ThemePath) in Swift
-     */
-    public class func setThemeWithPlistInSandbox(_ plistName: String, path: URL) {
-        setTheme(plistName: plistName, path: .sandbox(path))
-    }
-    
-    
-    /**
        extension for Objective-C, Use setTheme(jsonName: String, path: ThemePath) in Swift
     */
     public class func setThemeWithJsonInMainBundle(_ jsonName: String) {

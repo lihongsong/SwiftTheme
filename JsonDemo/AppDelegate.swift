@@ -18,6 +18,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // default: Red.json
         
+        print(SwiftThemeVersionNumber)
+        
         ThemeManager.setTheme(jsonName: "Red", path: .mainBundle)
         
         // status bar

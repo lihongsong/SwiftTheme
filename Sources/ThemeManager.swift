@@ -60,18 +60,6 @@ public extension ThemeManager {
         NotificationCenter.default.post(name: Notification.Name(rawValue: ThemeUpdateNotification), object: nil)
     }
     
-    class func setTheme(plistName: String, path: ThemePath) {
-        guard let plistPath = path.plistPath(name: plistName) else {
-            print("SwiftTheme WARNING: Can't find plist '\(plistName)' at: \(path)")
-            return
-        }
-        guard let plistDict = NSDictionary(contentsOfFile: plistPath) else {
-            print("SwiftTheme WARNING: Can't read plist '\(plistName)' at: \(plistPath)")
-            return
-        }
-        self.setTheme(dict: plistDict, path: path)
-    }
-    
     class func setTheme(jsonName: String, path: ThemePath) {
         guard let jsonPath = path.jsonPath(name: jsonName) else {
             print("SwiftTheme WARNING: Can't find json '\(jsonName)' at: \(path)")

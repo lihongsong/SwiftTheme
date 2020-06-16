@@ -1,5 +1,5 @@
 //
-//  ThemeManager+Plist.swift
+//  ThemeManager+KeyPath.swift
 //  SwiftTheme
 //
 //  Created by Gesen on 16/9/18.
