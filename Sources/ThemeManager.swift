@@ -22,10 +22,6 @@ public enum ThemePath {
         }
     }
     
-    public func plistPath(name: String) -> String? {
-        return filePath(name: name, ofType: "plist")
-    }
-    
     public func jsonPath(name: String) -> String? {
         return filePath(name: name, ofType: "json")
     }
@@ -44,20 +40,83 @@ public enum ThemePath {
 
 @objc public final class ThemeManager: NSObject {
     
+    @objc public static let shareInstance: ThemeManager = ThemeManager()
+    
     @objc public static var animationDuration = 0.3
     
     @objc public fileprivate(set) static var currentTheme: NSDictionary?
     @objc public fileprivate(set) static var currentThemeIndex: Int = 0
     
+    @objc fileprivate static var darkIgnoreControllers: [String]?
+    
+    @objc fileprivate static var themeItems: NSHashTable = NSHashTable<NSObject>.init(options: .weakMemory)
+    
     public fileprivate(set) static var currentThemePath: ThemePath?
+    
+    public override init() {
+        super.init()
+        
+        // 初始化 hook 方法
+//        UIView.initializeMethod()
+        UIViewController.initializeMethod()
+    }
+}
 
+extension ThemeManager {
+    
+    @objc class func hookViewDidLoad( viewControlelr: UIViewController) {
+        
+        guard let vcs = darkIgnoreControllers else {
+            return
+        }
+        
+        let className = NSStringFromClass(type(of: viewControlelr))
+        
+        if vcs.contains(className) {
+            return
+        }
+        
+        if #available(iOS 13, *) {
+            viewControlelr.overrideUserInterfaceStyle = .light
+        }
+    }
+}
+
+public extension ThemeManager {
+    
+    @objc class func setDarkIgnore(_ viewControllers: [String]) {
+        darkIgnoreControllers = viewControllers
+    }
+    
+    @objc class func addThemeItem(_ themeObject: NSObject) {
+        
+        if themeObject.onThemeStack {
+            return
+        }
+        themeItems.add(themeObject)
+        themeObject.onThemeStack = true
+    }
+    
+    @objc class func removeThemeItem(_ themeObject: NSObject) {
+        
+        if !themeObject.onThemeStack {
+            return
+        }
+        themeItems.remove(themeObject)
+        themeObject.onThemeStack = false
+    }
+    
+    @objc class func updateTheme() {
+        themeItems.allObjects.forEach{ $0._updateTheme() }
+        NotificationCenter.default.post(name: Notification.Name(rawValue: ThemeUpdateNotification), object: nil)
+    }
 }
 
 public extension ThemeManager {
     
     @objc class func setTheme(index: Int) {
         currentThemeIndex = index
-        NotificationCenter.default.post(name: Notification.Name(rawValue: ThemeUpdateNotification), object: nil)
+        updateTheme()
     }
     
     class func setTheme(jsonName: String, path: ThemePath) {
@@ -78,7 +137,7 @@ public extension ThemeManager {
     class func setTheme(dict: NSDictionary, path: ThemePath) {
         currentTheme = dict
         currentThemePath = path
-        NotificationCenter.default.post(name: Notification.Name(rawValue: ThemeUpdateNotification), object: nil)
+        updateTheme()
     }
     
 }

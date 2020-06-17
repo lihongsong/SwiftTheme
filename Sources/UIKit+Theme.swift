@@ -8,6 +8,29 @@
 
 import UIKit
 
+extension DispatchQueue {
+    private static var _onceTracker = [String]()
+    public class func once(token: String, block: () -> ()) {
+        objc_sync_enter(self)
+        defer {
+            objc_sync_exit(self)
+        }
+        if _onceTracker.contains(token) {
+            return
+        }
+        _onceTracker.append(token)
+        block()
+    }
+    
+    func async(block: @escaping ()->()) {
+        self.async(execute: block)
+    }
+    
+    func after(time: DispatchTime, block: @escaping ()->()) {
+        self.asyncAfter(deadline: time, execute: block)
+    }
+}
+
 @objc public extension UIView
 {
     var theme_alpha: ThemeCGFloatPicker? {
@@ -22,7 +45,98 @@ import UIKit
         get { return getThemePicker(self, "setTintColor:") as? ThemeColorPicker }
         set { setThemePicker(self, "setTintColor:", newValue) }
     }
+    
 }
+
+private let UIViewOnceToken = "UIView Method Swizzling"
+private let UIViewControllerOnceToken = "UIViewController Method Swizzling"
+
+@objc public extension NSObject {
+    
+    class func exchangeMethod(_class: AnyClass, originalSelector :Selector, swizzledSelector: Selector) {
+        let originalMethod = class_getInstanceMethod(_class, originalSelector)
+        let swizzledMethod = class_getInstanceMethod(_class, swizzledSelector)
+        
+        //在进行 Swizzling 的时候,需要用 class_addMethod 先进行判断一下原有类中是否有要替换方法的实现
+        let didAddMethod: Bool = class_addMethod(_class, originalSelector, method_getImplementation(swizzledMethod!), method_getTypeEncoding(swizzledMethod!))
+        //如果 class_addMethod 返回 yes,说明当前类中没有要替换方法的实现,所以需要在父类中查找,这时候就用到 method_getImplemetation 去获取 class_getInstanceMethod 里面的方法实现,然后再进行 class_replaceMethod 来实现 Swizzing
+        
+        if didAddMethod {
+            class_replaceMethod(_class, swizzledSelector, method_getImplementation(originalMethod!), method_getTypeEncoding(originalMethod!))
+        } else {
+            method_exchangeImplementations(originalMethod!, swizzledMethod!)
+        }
+    }
+    
+}
+
+@objc public extension UIViewController
+{
+    func theme_viewDidLoad() {
+        theme_viewDidLoad()
+        print(self, "theme_viewDidLoad")
+        ThemeManager.hookViewDidLoad(viewControlelr: self)
+    }
+    
+    class func initializeMethod() {
+        DispatchQueue.once(token: UIViewControllerOnceToken) {
+            let originalSelector = #selector(UIViewController.viewDidLoad)
+            let swizzledSelector = #selector(UIViewController.theme_viewDidLoad)
+            exchangeMethod(_class: self, originalSelector: originalSelector, swizzledSelector: swizzledSelector)
+        }
+    }
+}
+
+private var theme_onStackKey = "theme_onStackKey"
+private var theme_themeableKey = "theme_themeableKey"
+
+@objc public extension NSObject
+{
+    @objc var onThemeStack: Bool {
+        get {
+            let anyValue = objc_getAssociatedObject(self, &theme_onStackKey)
+            
+            guard let value = anyValue as? NSNumber else {
+                return false
+            }
+            return value.boolValue
+        }
+        set {
+            objc_setAssociatedObject(self, &theme_onStackKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+}
+
+//@objc public extension UIView
+//{
+//    @objc var themeable: Bool {
+//        get {
+//            let anyValue = objc_getAssociatedObject(self, &theme_themeableKey)
+//
+//            guard let value = anyValue as? NSNumber else {
+//                return false
+//            }
+//            return value.boolValue
+//        }
+//        set {
+//            objc_setAssociatedObject(self, &theme_themeableKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+//        }
+//    }
+//
+//    func theme_didMoveToWindow() {
+//        theme_didMoveToWindow()
+//    }
+//
+//    class func initializeMethod() {
+//
+//        DispatchQueue.once(token: UIViewOnceToken) {
+//            let originalSelector = #selector(UIView.didMoveToWindow)
+//            let swizzledSelector = #selector(UIView.theme_didMoveToWindow)
+//            exchangeMethod(_class: self, originalSelector: originalSelector, swizzledSelector: swizzledSelector)
+//        }
+//    }
+//}
+
 @objc public extension UIApplication
 {
     #if os(iOS)

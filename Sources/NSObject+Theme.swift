@@ -34,7 +34,6 @@ extension NSObject {
         }
         set {
             objc_setAssociatedObject(self, &themePickersKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            _removeThemeNotification()
             if newValue.isEmpty == false { _setupThemeNotification() }
         }
     }
@@ -102,18 +101,10 @@ extension NSObject {
 extension NSObject {
     
     fileprivate func _setupThemeNotification() {
-        if #available(iOS 9.0, tvOS 9.0, *) {
-            NotificationCenter.default.addObserver(self, selector: #selector(_updateTheme), name: NSNotification.Name(rawValue: ThemeUpdateNotification), object: nil)
-        } else {
-            NotificationCenter.default.addObserver(forName: NSNotification.Name(rawValue: ThemeUpdateNotification), object: nil, queue: nil, using: { [weak self] notification in self?._updateTheme() })
-        }
+        ThemeManager.addThemeItem(self)
     }
     
-    fileprivate func _removeThemeNotification() {
-        NotificationCenter.default.removeObserver(self, name: NSNotification.Name(rawValue: ThemeUpdateNotification), object: nil)
-    }
-    
-    @objc private func _updateTheme() {
+    @objc func _updateTheme() {
         themePickers.forEach { selector, picker in
             UIView.animate(withDuration: ThemeManager.animationDuration) {
                 self.performThemePicker(selector: selector, picker: picker)
@@ -126,7 +117,6 @@ extension NSObject {
             }
         }
     }
-    
 }
 
 private var themePickersKey = ""
